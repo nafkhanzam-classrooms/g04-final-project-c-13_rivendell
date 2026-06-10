@@ -17,7 +17,7 @@ from constants import (
 class Renderer:
     """Handles all drawing operations for the Tetris game."""
 
-    def __init__(self, screen):
+    def __init__(self, screen, offset_x=0):
         """
         Initialize the renderer with a pygame display surface.
 
@@ -25,10 +25,11 @@ class Renderer:
             screen: The main pygame display surface.
         """
         self.screen = screen
+        self.offset_x = offset_x
         self.font_large = pygame.font.SysFont("Segoe UI", 36, bold=True)
         self.font_medium = pygame.font.SysFont("Segoe UI", 22)
         self.font_small = pygame.font.SysFont("Segoe UI", 16)
-        self.font_tiny = pygame.font.SysFont("Segoe UI", 13)
+        self.font_tiny = pygame.font.SysFont("Segoe UI", 14)
 
     # ─── Block Drawing ────────────────────────────────────────────────────
 
@@ -107,27 +108,28 @@ class Renderer:
             ghost_y: The y position of the ghost (hard-drop preview).
         """
         # Board background & border
-        board_rect = pygame.Rect(BOARD_X - 2, BOARD_Y - 2,
+        bx = BOARD_X + self.offset_x
+        board_rect = pygame.Rect(bx - 2, BOARD_Y - 2,
                                   BOARD_WIDTH + 4, BOARD_HEIGHT + 4)
         pygame.draw.rect(self.screen, GRID_COLOR, board_rect)
         pygame.draw.rect(self.screen, BORDER_COLOR, board_rect, 2)
 
         # Grid lines
         for x in range(COLS + 1):
-            px = BOARD_X + x * CELL_SIZE
+            px = bx + x * CELL_SIZE
             pygame.draw.line(self.screen, GRID_LINE_COLOR,
                              (px, BOARD_Y), (px, BOARD_Y + BOARD_HEIGHT), 1)
         for y in range(ROWS + 1):
             py = BOARD_Y + y * CELL_SIZE
             pygame.draw.line(self.screen, GRID_LINE_COLOR,
-                             (BOARD_X, py), (BOARD_X + BOARD_WIDTH, py), 1)
+                             (bx, py), (bx + BOARD_WIDTH, py), 1)
 
         # Locked blocks
         for y in range(ROWS):
             for x in range(COLS):
                 cell = board.grid[y][x]
                 if cell is not None:
-                    px = BOARD_X + x * CELL_SIZE
+                    px = bx + x * CELL_SIZE
                     py = BOARD_Y + y * CELL_SIZE
                     self.draw_block(px, py, PIECE_COLORS[cell], PIECE_GLOW[cell])
 
@@ -137,14 +139,14 @@ class Renderer:
                 current_piece.x, ghost_y, current_piece.rotation)
             for gx, gy in ghost_cells:
                 if gy >= 0:
-                    px = BOARD_X + gx * CELL_SIZE
+                    px = bx + gx * CELL_SIZE
                     py = BOARD_Y + gy * CELL_SIZE
                     self.draw_block(px, py, current_piece.color, ghost=True)
 
         # Current piece
         for cx, cy in current_piece.get_cells():
             if cy >= 0:
-                px = BOARD_X + cx * CELL_SIZE
+                px = bx + cx * CELL_SIZE
                 py = BOARD_Y + cy * CELL_SIZE
                 self.draw_block(px, py, current_piece.color, current_piece.glow)
 
@@ -162,7 +164,8 @@ class Renderer:
             lines_cleared: Total lines cleared.
             combo: Current combo count.
         """
-        sidebar_x = BOARD_X + BOARD_WIDTH + 20
+        bx = BOARD_X + self.offset_x
+        sidebar_x = bx + BOARD_WIDTH + 20
 
         # ── HOLD ──
         label = self.font_medium.render("HOLD", True, TEXT_DIM)
@@ -218,24 +221,26 @@ class Renderer:
     def draw_title_bar(self, total_time):
         """Draw the title bar with game title and elapsed time."""
         title = self.font_medium.render("T E T R I S", True, (140, 140, 255))
-        self.screen.blit(title, (BOARD_X, 8))
+        bx = BOARD_X + self.offset_x
+        self.screen.blit(title, (bx, 8))
 
         minutes = int(total_time) // 60
         seconds = int(total_time) % 60
         time_str = f"{minutes:02d}:{seconds:02d}"
         time_text = self.font_small.render(time_str, True, TEXT_DIM)
-        self.screen.blit(time_text, (BOARD_X + BOARD_WIDTH - 50, 12))
+        self.screen.blit(time_text, (bx + BOARD_WIDTH - 50, 12))
 
     def draw_controls_hint(self):
         """Draw the keyboard controls hint at the bottom."""
+        bx = BOARD_X + self.offset_x
         hints = [
             "←→ Move  ↑ Rotate  ↓ Soft Drop",
             "SPACE Hard Drop  C Hold  P Pause"
         ]
         y = BOARD_Y + BOARD_HEIGHT + 8
         for hint in hints:
-            text = self.font_tiny.render(hint, True, (60, 60, 100))
-            self.screen.blit(text, (BOARD_X, y))
+            text = self.font_tiny.render(hint, True, (242,240,239))
+            self.screen.blit(text, (bx, y))
             y += 16
 
     def draw_game_over(self, score):
@@ -275,16 +280,20 @@ class Renderer:
 
     def draw_flash(self, flash_timer):
         """Draw the board-wide flash when lines are cleared."""
+        bx = BOARD_X + self.offset_x
         if flash_timer > 0:
             flash = pygame.Surface((BOARD_WIDTH, BOARD_HEIGHT), pygame.SRCALPHA)
             a = int(80 * (flash_timer / 0.2))
             flash.fill((255, 255, 255, a))
-            self.screen.blit(flash, (BOARD_X, BOARD_Y))
+            self.screen.blit(flash, (bx, BOARD_Y))
 
     def draw_background(self):
-        """Draw the background with a subtle gradient."""
-        self.screen.fill(BG_COLOR)
+        """Draw the background with a subtle gradient, limited to this game's panel."""
+        panel_width = SCREEN_WIDTH // 2
+        # Hanya fill area panel ini, bukan seluruh layar
+        panel_rect = pygame.Rect(self.offset_x, 0, panel_width, SCREEN_HEIGHT)
+        pygame.draw.rect(self.screen, BG_COLOR, panel_rect)
         for i in range(SCREEN_HEIGHT):
             alpha = int(15 + i * 0.02)
             pygame.draw.line(self.screen, (alpha, alpha, alpha + 10),
-                             (0, i), (SCREEN_WIDTH, i))
+                             (self.offset_x, i), (self.offset_x + panel_width, i))

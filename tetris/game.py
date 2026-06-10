@@ -20,12 +20,17 @@ from renderer import Renderer
 class TetrisGame:
     """Main Tetris game controller — handles logic, input, and rendering."""
 
-    def __init__(self):
-        """Initialize pygame, create the window, and set up initial game state."""
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        pygame.display.set_caption("✦ TETRIS ✦")
+    def __init__(self, screen, offset_x=0):
+        # """Initialize pygame, create the window, and set up initial game state."""
+        # self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        # pygame.display.set_caption("✦ TETRIS ✦")
+        # self.clock = pygame.time.Clock()
+        # self.renderer = Renderer(self.screen)
+        # self.reset_game()
+        self.screen = screen
+        self.offset_x = offset_x
         self.clock = pygame.time.Clock()
-        self.renderer = Renderer(self.screen)
+        self.renderer = Renderer(self.screen, offset_x)
         self.reset_game()
 
     # ─── State Management ─────────────────────────────────────────────────
