@@ -13,6 +13,7 @@ SCREEN_WIDTH = 1020  # 20 margin + (340 board + 20 margin + 120 sidebar) * 2 + 2
 SCREEN_HEIGHT = BOARD_HEIGHT + 120
 BOARD_1_X = 20
 BOARD_2_X = 520
+BOARD_SINGLE_X = 270
 BOARD_Y = 60
 FPS = 60
 
