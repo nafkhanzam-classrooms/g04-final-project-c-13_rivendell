@@ -1,13 +1,13 @@
 """
 game.py - Main game logic class (TetrisGame) and PieceSequence generator.
-Coordinates dual player updates, start menu navigation, and rendering.
+Coordinates start menu navigation, single/dual player updates, and rendering.
 """
 
 import random
 import pygame
 from constants import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS,
-    BOARD_1_X, BOARD_2_X, BOARD_Y,
+    BOARD_1_X, BOARD_2_X, BOARD_SINGLE_X, BOARD_Y,
 )
 from piece import Piece
 from player_state import PlayerState
@@ -61,7 +61,7 @@ class PieceSequence:
 
 
 class TetrisGame:
-    """Coordinates the start menu, dual-player game loops, and visual drawing."""
+    """Coordinates the start menu, single/dual-player game loops, and visual drawing."""
 
     def __init__(self):
         """Initialize pygame display and main menu states."""
@@ -74,7 +74,7 @@ class TetrisGame:
         self.p2_keys = P2_KEYS
 
         # Main Menu Options
-        self.menu_options = ["Play Game", "Exit"]
+        self.menu_options = ["Solo Player", "Duo Player", "Exit"]
         self.reset_game_to_menu()
 
     def reset_game_to_menu(self):
@@ -84,33 +84,43 @@ class TetrisGame:
         self.menu_particles = []
         self.p1 = None
         self.p2 = None
+        self.single_player_mode = False
         self.paused = False
         self.total_time = 0
 
-    def start_game(self):
-        """Launch the game in Duo player mode."""
+    def start_game(self, single_player=False):
+        """Launch the game in either Single or Duo player mode."""
         self.state = STATE_PLAYING
+        self.single_player_mode = single_player
         self.shared_sequence = PieceSequence()
 
-        # Create two players side-by-side
-        self.p1 = PlayerState("Player 1", BOARD_1_X, BOARD_Y, self.p1_keys)
-        self.p2 = PlayerState("Player 2", BOARD_2_X, BOARD_Y, self.p2_keys)
-        self.p1.init_pieces(self.shared_sequence, index_offset=0)
-        self.p2.init_pieces(self.shared_sequence, index_offset=0)
+        if self.single_player_mode:
+            # Create a single player centered on screen
+            self.p1 = PlayerState("Player 1", BOARD_SINGLE_X, BOARD_Y, self.p1_keys)
+            self.p2 = None
+            self.p1.init_pieces(self.shared_sequence, index_offset=0)
+        else:
+            # Create two players side-by-side
+            self.p1 = PlayerState("Player 1", BOARD_1_X, BOARD_Y, self.p1_keys)
+            self.p2 = PlayerState("Player 2", BOARD_2_X, BOARD_Y, self.p2_keys)
+            self.p1.init_pieces(self.shared_sequence, index_offset=0)
+            self.p2.init_pieces(self.shared_sequence, index_offset=0)
 
         self.paused = False
         self.total_time = 0
 
     def restart_match(self):
-        """Restart the active game using a fresh piece sequence."""
+        """Restart the active game mode using a fresh piece sequence."""
         if self.state == STATE_PLAYING:
-            self.start_game()
+            self.start_game(self.single_player_mode)
 
     @property
     def is_game_over(self):
-        """Returns True if both players are game over."""
+        """Returns True if the active players are game over."""
         if self.state != STATE_PLAYING:
             return False
+        if self.single_player_mode:
+            return self.p1.game_over
         return self.p1.game_over and self.p2.game_over
 
     def update_menu_particles(self, dt):
@@ -141,7 +151,8 @@ class TetrisGame:
                 return
             self.total_time += dt
             self.p1.update(dt, self.shared_sequence)
-            self.p2.update(dt, self.shared_sequence)
+            if not self.single_player_mode:
+                self.p2.update(dt, self.shared_sequence)
 
     def draw(self):
         """Render either the main menu or the playing boards."""
@@ -168,28 +179,32 @@ class TetrisGame:
             if self.p1.game_over:
                 r.draw_player_game_over(self.p1.board_x, self.p1.board_y)
 
-            # Draw Player 2
-            r.draw_board(self.p2.board, self.p2.current_piece, self.p2.get_ghost_y(),
-                         self.p2.board_x, self.p2.board_y)
-            r.draw_sidebar(self.p2.held_piece, self.p2.next_pieces, self.p2.score,
-                           self.p2.level, self.p2.lines_cleared, self.p2.combo,
-                           self.p2.board_x, self.p2.board_y)
-            r.draw_flash(self.p2.flash_timer, self.p2.board_x, self.p2.board_y)
+            # Draw Player 2 (If playing Duo)
+            if not self.single_player_mode:
+                r.draw_board(self.p2.board, self.p2.current_piece, self.p2.get_ghost_y(),
+                             self.p2.board_x, self.p2.board_y)
+                r.draw_sidebar(self.p2.held_piece, self.p2.next_pieces, self.p2.score,
+                               self.p2.level, self.p2.lines_cleared, self.p2.combo,
+                               self.p2.board_x, self.p2.board_y)
+                r.draw_flash(self.p2.flash_timer, self.p2.board_x, self.p2.board_y)
 
-            for effect in self.p2.line_effects:
-                effect.draw(self.screen)
-            for particle in self.p2.particles:
-                particle.draw(self.screen)
+                for effect in self.p2.line_effects:
+                    effect.draw(self.screen)
+                for particle in self.p2.particles:
+                    particle.draw(self.screen)
 
-            if self.p2.game_over:
-                r.draw_player_game_over(self.p2.board_x, self.p2.board_y)
+                if self.p2.game_over:
+                    r.draw_player_game_over(self.p2.board_x, self.p2.board_y)
 
             # Global display guidelines
             r.draw_controls_hint()
 
             # Global overlays
             if self.is_game_over:
-                r.draw_game_over(self.p1.score, self.p2.score, self.p1.game_over, self.p2.game_over)
+                score_p2 = 0 if self.single_player_mode else self.p2.score
+                p2_over = True if self.single_player_mode else self.p2.game_over
+                r.draw_game_over(self.p1.score, score_p2, self.p1.game_over, p2_over,
+                                 self.single_player_mode)
             elif self.paused:
                 r.draw_pause()
 
@@ -210,9 +225,11 @@ class TetrisGame:
                         self.menu_selection = (self.menu_selection + 1) % len(self.menu_options)
                     elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
                         # Action selection
-                        if self.menu_selection == 0:  # Play Game
-                            self.start_game()
-                        elif self.menu_selection == 1:  # Exit
+                        if self.menu_selection == 0:  # Solo Player
+                            self.start_game(single_player=True)
+                        elif self.menu_selection == 1:  # Duo Player
+                            self.start_game(single_player=False)
+                        elif self.menu_selection == 2:  # Exit
                             return False
                     continue
 
@@ -247,7 +264,7 @@ class TetrisGame:
                         self.restart_match()
                         continue
 
-                    # Route Inputs to Player 1
+                    # Route Inputs to Player 1 (Active in both modes)
                     p1_ctrl = self.p1.controls
                     if not self.p1.game_over:
                         if event.key == p1_ctrl['left']:
@@ -271,29 +288,30 @@ class TetrisGame:
                         elif event.key == p1_ctrl['hold']:
                             self.p1.hold_piece(self.shared_sequence)
 
-                    # Route Inputs to Player 2
-                    p2_ctrl = self.p2.controls
-                    if not self.p2.game_over:
-                        if event.key == p2_ctrl['left']:
-                            self.p2.move(-1)
-                            self.p2.das_direction = -1
-                            self.p2.das_timer = 0
-                            self.p2.das_charged = False
-                        elif event.key == p2_ctrl['right']:
-                            self.p2.move(1)
-                            self.p2.das_direction = 1
-                            self.p2.das_timer = 0
-                            self.p2.das_charged = False
-                        elif event.key == p2_ctrl['rotate_cw']:
-                            self.p2.rotate(1)
-                        elif event.key == p2_ctrl['rotate_ccw']:
-                            self.p2.rotate(-1)
-                        elif event.key == p2_ctrl['soft_drop']:
-                            self.p2.soft_drop = True
-                        elif event.key == p2_ctrl['hard_drop']:
-                            self.p2.hard_drop(self.shared_sequence)
-                        elif event.key == p2_ctrl['hold']:
-                            self.p2.hold_piece(self.shared_sequence)
+                    # Route Inputs to Player 2 (Only in Duo mode)
+                    if not self.single_player_mode:
+                        p2_ctrl = self.p2.controls
+                        if not self.p2.game_over:
+                            if event.key == p2_ctrl['left']:
+                                self.p2.move(-1)
+                                self.p2.das_direction = -1
+                                self.p2.das_timer = 0
+                                self.p2.das_charged = False
+                            elif event.key == p2_ctrl['right']:
+                                self.p2.move(1)
+                                self.p2.das_direction = 1
+                                self.p2.das_timer = 0
+                                self.p2.das_charged = False
+                            elif event.key == p2_ctrl['rotate_cw']:
+                                self.p2.rotate(1)
+                            elif event.key == p2_ctrl['rotate_ccw']:
+                                self.p2.rotate(-1)
+                            elif event.key == p2_ctrl['soft_drop']:
+                                self.p2.soft_drop = True
+                            elif event.key == p2_ctrl['hard_drop']:
+                                self.p2.hard_drop(self.shared_sequence)
+                            elif event.key == p2_ctrl['hold']:
+                                self.p2.hold_piece(self.shared_sequence)
 
             if event.type == pygame.KEYUP and self.state == STATE_PLAYING and not self.paused:
                 # P1 Key Release
@@ -305,14 +323,15 @@ class TetrisGame:
                 elif event.key == p1_ctrl['soft_drop']:
                     self.p1.soft_drop = False
 
-                # P2 Key Release
-                p2_ctrl = self.p2.controls
-                if event.key == p2_ctrl['left'] and self.p2.das_direction == -1:
-                    self.p2.das_direction = 0
-                elif event.key == p2_ctrl['right'] and self.p2.das_direction == 1:
-                    self.p2.das_direction = 0
-                elif event.key == p2_ctrl['soft_drop']:
-                    self.p2.soft_drop = False
+                # P2 Key Release (Only in Duo Mode)
+                if not self.single_player_mode:
+                    p2_ctrl = self.p2.controls
+                    if event.key == p2_ctrl['left'] and self.p2.das_direction == -1:
+                        self.p2.das_direction = 0
+                    elif event.key == p2_ctrl['right'] and self.p2.das_direction == 1:
+                        self.p2.das_direction = 0
+                    elif event.key == p2_ctrl['soft_drop']:
+                        self.p2.soft_drop = False
 
         return True
 
