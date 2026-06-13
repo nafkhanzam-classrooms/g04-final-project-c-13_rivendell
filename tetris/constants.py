@@ -9,10 +9,11 @@ ROWS = 20
 SIDEBAR_WIDTH = 200
 BOARD_WIDTH = COLS * CELL_SIZE
 BOARD_HEIGHT = ROWS * CELL_SIZE
-SCREEN_WIDTH = BOARD_WIDTH + SIDEBAR_WIDTH + 40
-SCREEN_HEIGHT = BOARD_HEIGHT + 60
-BOARD_X = 20
-BOARD_Y = 40
+SCREEN_WIDTH = 1020  # 20 margin + (340 board + 20 margin + 120 sidebar) * 2 + 20 gap
+SCREEN_HEIGHT = BOARD_HEIGHT + 120
+BOARD_1_X = 20
+BOARD_2_X = 520
+BOARD_Y = 60
 FPS = 60
 
 # ─── Colors (Modern Neon Palette) ────────────────────────────────────────────
