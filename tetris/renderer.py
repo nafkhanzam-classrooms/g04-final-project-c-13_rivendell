@@ -7,7 +7,7 @@ import pygame
 
 from constants import (
     CELL_SIZE, COLS, ROWS, BOARD_WIDTH, BOARD_HEIGHT,
-    SCREEN_WIDTH, SCREEN_HEIGHT, BOARD_X, BOARD_Y,
+    SCREEN_WIDTH, SCREEN_HEIGHT, BOARD_1_X, BOARD_2_X, BOARD_Y,
     BG_COLOR, GRID_COLOR, GRID_LINE_COLOR, BORDER_COLOR,
     TEXT_COLOR, TEXT_DIM, GHOST_ALPHA,
     PIECE_COLORS, PIECE_GLOW, SHAPES,
@@ -97,7 +97,7 @@ class Renderer:
 
     # ─── Board Drawing ────────────────────────────────────────────────────
 
-    def draw_board(self, board, current_piece, ghost_y):
+    def draw_board(self, board, current_piece, ghost_y, board_x, board_y):
         """
         Draw the game board: grid, locked blocks, ghost piece, and active piece.
 
@@ -105,30 +105,32 @@ class Renderer:
             board: The Board object containing locked cell data.
             current_piece: The currently active Piece.
             ghost_y: The y position of the ghost (hard-drop preview).
+            board_x: Pixel x offset of the board grid.
+            board_y: Pixel y offset of the board grid.
         """
         # Board background & border
-        board_rect = pygame.Rect(BOARD_X - 2, BOARD_Y - 2,
+        board_rect = pygame.Rect(board_x - 2, board_y - 2,
                                   BOARD_WIDTH + 4, BOARD_HEIGHT + 4)
         pygame.draw.rect(self.screen, GRID_COLOR, board_rect)
         pygame.draw.rect(self.screen, BORDER_COLOR, board_rect, 2)
 
         # Grid lines
         for x in range(COLS + 1):
-            px = BOARD_X + x * CELL_SIZE
+            px = board_x + x * CELL_SIZE
             pygame.draw.line(self.screen, GRID_LINE_COLOR,
-                             (px, BOARD_Y), (px, BOARD_Y + BOARD_HEIGHT), 1)
+                             (px, board_y), (px, board_y + BOARD_HEIGHT), 1)
         for y in range(ROWS + 1):
-            py = BOARD_Y + y * CELL_SIZE
+            py = board_y + y * CELL_SIZE
             pygame.draw.line(self.screen, GRID_LINE_COLOR,
-                             (BOARD_X, py), (BOARD_X + BOARD_WIDTH, py), 1)
+                             (board_x, py), (board_x + BOARD_WIDTH, py), 1)
 
         # Locked blocks
         for y in range(ROWS):
             for x in range(COLS):
                 cell = board.grid[y][x]
                 if cell is not None:
-                    px = BOARD_X + x * CELL_SIZE
-                    py = BOARD_Y + y * CELL_SIZE
+                    px = board_x + x * CELL_SIZE
+                    py = board_y + y * CELL_SIZE
                     self.draw_block(px, py, PIECE_COLORS[cell], PIECE_GLOW[cell])
 
         # Ghost piece
@@ -137,45 +139,37 @@ class Renderer:
                 current_piece.x, ghost_y, current_piece.rotation)
             for gx, gy in ghost_cells:
                 if gy >= 0:
-                    px = BOARD_X + gx * CELL_SIZE
-                    py = BOARD_Y + gy * CELL_SIZE
+                    px = board_x + gx * CELL_SIZE
+                    py = board_y + gy * CELL_SIZE
                     self.draw_block(px, py, current_piece.color, ghost=True)
 
         # Current piece
         for cx, cy in current_piece.get_cells():
             if cy >= 0:
-                px = BOARD_X + cx * CELL_SIZE
-                py = BOARD_Y + cy * CELL_SIZE
+                px = board_x + cx * CELL_SIZE
+                py = board_y + cy * CELL_SIZE
                 self.draw_block(px, py, current_piece.color, current_piece.glow)
 
     # ─── Sidebar Drawing ─────────────────────────────────────────────────
 
-    def draw_sidebar(self, held_piece, next_pieces, score, level, lines_cleared, combo):
+    def draw_sidebar(self, held_piece, next_pieces, score, level, lines_cleared, combo, board_x, board_y):
         """
         Draw the sidebar containing HOLD, NEXT, SCORE, LEVEL, LINES, and COMBO.
-
-        Args:
-            held_piece: The held Piece (or None).
-            next_pieces: List of next Piece objects.
-            score: Current score.
-            level: Current level.
-            lines_cleared: Total lines cleared.
-            combo: Current combo count.
         """
-        sidebar_x = BOARD_X + BOARD_WIDTH + 20
+        sidebar_x = board_x + BOARD_WIDTH + 20
 
         # ── HOLD ──
         label = self.font_medium.render("HOLD", True, TEXT_DIM)
-        self.screen.blit(label, (sidebar_x, BOARD_Y))
-        hold_rect = pygame.Rect(sidebar_x, BOARD_Y + 28, 120, 75)
+        self.screen.blit(label, (sidebar_x, board_y))
+        hold_rect = pygame.Rect(sidebar_x, board_y + 28, 120, 75)
         pygame.draw.rect(self.screen, (20, 20, 45), hold_rect)
         pygame.draw.rect(self.screen, BORDER_COLOR, hold_rect, 1)
         if held_piece:
             self.draw_mini_piece(held_piece.type,
-                                 sidebar_x + 15, BOARD_Y + 42, 0.6)
+                                 sidebar_x + 15, board_y + 42, 0.6)
 
         # ── NEXT ──
-        next_y = BOARD_Y + 120
+        next_y = board_y + 120
         label = self.font_medium.render("NEXT", True, TEXT_DIM)
         self.screen.blit(label, (sidebar_x, next_y))
         for i, piece in enumerate(next_pieces):
@@ -217,47 +211,94 @@ class Renderer:
 
     def draw_title_bar(self, total_time):
         """Draw the title bar with game title and elapsed time."""
-        title = self.font_medium.render("T E T R I S", True, (140, 140, 255))
-        self.screen.blit(title, (BOARD_X, 8))
+        title = self.font_medium.render("✦ T E T R I S  D U O ✦", True, (140, 140, 255))
+        title_rect = title.get_rect(center=(SCREEN_WIDTH // 2, 20))
+        self.screen.blit(title, title_rect)
 
         minutes = int(total_time) // 60
         seconds = int(total_time) % 60
         time_str = f"{minutes:02d}:{seconds:02d}"
         time_text = self.font_small.render(time_str, True, TEXT_DIM)
-        self.screen.blit(time_text, (BOARD_X + BOARD_WIDTH - 50, 12))
+        time_rect = time_text.get_rect(center=(SCREEN_WIDTH // 2, 45))
+        self.screen.blit(time_text, time_rect)
 
     def draw_controls_hint(self):
         """Draw the keyboard controls hint at the bottom."""
-        hints = [
-            "←→ Move  ↑ Rotate  ↓ Soft Drop",
-            "SPACE Hard Drop  C Hold  P Pause"
+        p1_hints = [
+            "Player 1 (Left):",
+            "A/D Move  W Rotate CW  Q Rotate CCW",
+            "S Soft Drop  SPACE Hard Drop  LSHIFT Hold"
         ]
-        y = BOARD_Y + BOARD_HEIGHT + 8
-        for hint in hints:
-            text = self.font_tiny.render(hint, True, (60, 60, 100))
-            self.screen.blit(text, (BOARD_X, y))
-            y += 16
+        p2_hints = [
+            "Player 2 (Right):",
+            "←→ Move  ↑ Rotate CW  . Rotate CCW",
+            "↓ Soft Drop  ENTER Hard Drop  RSHIFT Hold"
+        ]
+        y1 = BOARD_Y + BOARD_HEIGHT + 8
+        for hint in p1_hints:
+            text = self.font_tiny.render(hint, True, (80, 80, 120))
+            self.screen.blit(text, (BOARD_1_X, y1))
+            y1 += 15
 
-    def draw_game_over(self, score):
-        """Draw the game over overlay with final score."""
+        y2 = BOARD_Y + BOARD_HEIGHT + 8
+        for hint in p2_hints:
+            text = self.font_tiny.render(hint, True, (80, 80, 120))
+            self.screen.blit(text, (BOARD_2_X, y2))
+            y2 += 15
+
+    def draw_game_over(self, score_p1, score_p2, p1_over, p2_over):
+        """Draw the game over overlay with scores and winner details."""
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 180))
         self.screen.blit(overlay, (0, 0))
 
         go_text = self.font_large.render("GAME OVER", True, (255, 60, 60))
-        go_rect = go_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40))
-        glow_text = self.font_large.render("GAME OVER", True, (255, 100, 100))
-        glow_rect = glow_text.get_rect(center=(SCREEN_WIDTH // 2 + 2, SCREEN_HEIGHT // 2 - 38))
-        self.screen.blit(glow_text, glow_rect)
+        go_rect = go_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 80))
         self.screen.blit(go_text, go_rect)
 
-        score_text = self.font_medium.render(f"Final Score: {score:,}", True, TEXT_COLOR)
-        score_rect = score_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 10))
-        self.screen.blit(score_text, score_rect)
+        if p1_over and p2_over:
+            if score_p1 > score_p2:
+                result_str = "Player 1 Wins!"
+                color = (100, 255, 100)
+            elif score_p2 > score_p1:
+                result_str = "Player 2 Wins!"
+                color = (100, 255, 100)
+            else:
+                result_str = "It's a Draw!"
+                color = (255, 255, 100)
+        else:
+            if p1_over:
+                result_str = "Player 2 Wins (P1 topped out)!"
+                color = (100, 255, 100)
+            else:
+                result_str = "Player 1 Wins (P2 topped out)!"
+                color = (100, 255, 100)
+
+        result_text = self.font_medium.render(result_str, True, color)
+        result_rect = result_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 20))
+        self.screen.blit(result_text, result_rect)
+
+        p1_score = self.font_medium.render(f"P1 Score: {score_p1:,}", True, TEXT_COLOR)
+        p1_score_rect = p1_score.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20))
+        self.screen.blit(p1_score, p1_score_rect)
+
+        p2_score = self.font_medium.render(f"P2 Score: {score_p2:,}", True, TEXT_COLOR)
+        p2_score_rect = p2_score.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
+        self.screen.blit(p2_score, p2_score_rect)
 
         restart_text = self.font_small.render("Press R to Restart  |  Q to Quit", True, TEXT_DIM)
-        restart_rect = restart_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
+        restart_rect = restart_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 100))
         self.screen.blit(restart_text, restart_rect)
+
+    def draw_player_game_over(self, board_x, board_y):
+        """Draw an overlay over a single player's board when they game over."""
+        overlay = pygame.Surface((BOARD_WIDTH, BOARD_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((80, 0, 0, 150))
+        self.screen.blit(overlay, (board_x, board_y))
+
+        go_text = self.font_medium.render("GAME OVER", True, (255, 100, 100))
+        go_rect = go_text.get_rect(center=(board_x + BOARD_WIDTH // 2, board_y + BOARD_HEIGHT // 2))
+        self.screen.blit(go_text, go_rect)
 
     def draw_pause(self):
         """Draw the pause overlay."""
@@ -273,13 +314,13 @@ class Renderer:
         hint_rect = hint_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 30))
         self.screen.blit(hint_text, hint_rect)
 
-    def draw_flash(self, flash_timer):
+    def draw_flash(self, flash_timer, board_x, board_y):
         """Draw the board-wide flash when lines are cleared."""
         if flash_timer > 0:
             flash = pygame.Surface((BOARD_WIDTH, BOARD_HEIGHT), pygame.SRCALPHA)
             a = int(80 * (flash_timer / 0.2))
             flash.fill((255, 255, 255, a))
-            self.screen.blit(flash, (BOARD_X, BOARD_Y))
+            self.screen.blit(flash, (board_x, board_y))
 
     def draw_background(self):
         """Draw the background with a subtle gradient."""
