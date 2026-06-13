@@ -7,7 +7,7 @@ import pygame
 
 from constants import (
     CELL_SIZE, COLS, ROWS, BOARD_WIDTH, BOARD_HEIGHT,
-    SCREEN_WIDTH, SCREEN_HEIGHT, BOARD_1_X, BOARD_2_X, BOARD_Y,
+    SCREEN_WIDTH, SCREEN_HEIGHT, BOARD_1_X, BOARD_2_X, BOARD_SINGLE_X, BOARD_Y,
     BG_COLOR, GRID_COLOR, GRID_LINE_COLOR, BORDER_COLOR,
     TEXT_COLOR, TEXT_DIM, GHOST_ALPHA,
     PIECE_COLORS, PIECE_GLOW, SHAPES,
@@ -246,7 +246,7 @@ class Renderer:
             self.screen.blit(text, (BOARD_2_X, y2))
             y2 += 15
 
-    def draw_game_over(self, score_p1, score_p2, p1_over, p2_over):
+    def draw_game_over(self, score_p1, score_p2, p1_over, p2_over, is_single_player=False):
         """Draw the game over overlay with scores and winner details."""
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 180))
@@ -255,6 +255,16 @@ class Renderer:
         go_text = self.font_large.render("GAME OVER", True, (255, 60, 60))
         go_rect = go_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 80))
         self.screen.blit(go_text, go_rect)
+
+        if is_single_player:
+            score_text = self.font_medium.render(f"Final Score: {score_p1:,}", True, TEXT_COLOR)
+            score_rect = score_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 10))
+            self.screen.blit(score_text, score_rect)
+
+            restart_text = self.font_small.render("Press R to Restart  |  M to Menu  |  Q to Quit", True, TEXT_DIM)
+            restart_rect = restart_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 40))
+            self.screen.blit(restart_text, restart_rect)
+            return
 
         if p1_over and p2_over:
             if score_p1 > score_p2:
