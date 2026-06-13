@@ -286,7 +286,7 @@ class Renderer:
         p2_score_rect = p2_score.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
         self.screen.blit(p2_score, p2_score_rect)
 
-        restart_text = self.font_small.render("Press R to Restart  |  Q to Quit", True, TEXT_DIM)
+        restart_text = self.font_small.render("Press R to Restart  |  M to Menu  |  Q to Quit", True, TEXT_DIM)
         restart_rect = restart_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 100))
         self.screen.blit(restart_text, restart_rect)
 
@@ -321,6 +321,58 @@ class Renderer:
             a = int(80 * (flash_timer / 0.2))
             flash.fill((255, 255, 255, a))
             self.screen.blit(flash, (board_x, board_y))
+
+    def draw_menu(self, options, selection, menu_particles):
+        """Draw the interactive main start menu with rising background particles."""
+        self.draw_background()
+
+        # Draw background menu particles
+        for p in menu_particles:
+            p.draw(self.screen)
+
+        # Draw title
+        title_large = pygame.font.SysFont("Segoe UI", 64, bold=True)
+        title_sub = pygame.font.SysFont("Segoe UI", 24)
+
+        title_text = title_large.render("T E T R I S", True, (140, 140, 255))
+        # Add a neon duplicate shadow
+        title_glow = title_large.render("T E T R I S", True, (80, 80, 200))
+
+        title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 140))
+        glow_rect = title_glow.get_rect(center=(SCREEN_WIDTH // 2 + 4, SCREEN_HEIGHT // 2 - 136))
+
+        self.screen.blit(title_glow, glow_rect)
+        self.screen.blit(title_text, title_rect)
+
+        sub_text = title_sub.render("✦  D U O   E D I T I O N  ✦", True, (200, 200, 255))
+        sub_rect = sub_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 70))
+        self.screen.blit(sub_text, sub_rect)
+
+        # Draw options
+        option_y = SCREEN_HEIGHT // 2 + 10
+        for i, option in enumerate(options):
+            is_selected = (i == selection)
+            color = (255, 255, 255) if is_selected else TEXT_DIM
+            text_style = pygame.font.SysFont("Segoe UI", 32, bold=is_selected)
+
+            # Select indicator prefix
+            text_str = f"▶  {option}  ◀" if is_selected else option
+            text_surface = text_style.render(text_str, True, color)
+            rect = text_surface.get_rect(center=(SCREEN_WIDTH // 2, option_y))
+
+            # Draw selector background highlight
+            if is_selected:
+                highlight = pygame.Surface((rect.width + 40, rect.height + 10), pygame.SRCALPHA)
+                highlight.fill((100, 100, 255, 30))
+                self.screen.blit(highlight, (rect.x - 20, rect.y - 5))
+
+            self.screen.blit(text_surface, rect)
+            option_y += 60
+
+        # Footer hints
+        hint_text = self.font_small.render("Use ↑ / ↓ to Navigate  |  Press ENTER to Select", True, (80, 80, 120))
+        hint_rect = hint_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 40))
+        self.screen.blit(hint_text, hint_rect)
 
     def draw_background(self):
         """Draw the background with a subtle gradient."""
