@@ -21,6 +21,129 @@ https://youtu.be/Q5KekyjSu9w
 1. **Solo Player**: Permainan single-player lokal secara offline.
 2. **Duo Player (Lokal Jaringan / LAN / Localhost)**: Mode multiplayer 2 pemain menggunakan arsitektur Client-Server berbasis WebSocket. Pemain dapat bertanding di komputer yang sama (melalui IP `127.0.0.1` / localhost dengan membuka dua jendela game) atau antar komputer yang berada dalam satu jaringan lokal (LAN) yang sama.
 
+Program ini telah memenuhi dan mengimplementasikan seluruh fitur wajib proyek pemrograman jaringan sebagai berikut:
+
+#### A. Real-time Update
+Client melakukan pengiriman snapshot status lokal secara berkala setiap 50 ms (20 Hz) ke server. Penerimaan data dilakukan secara asinkron dalam background thread agar main thread Pygame tetap berjalan lancar pada 60 FPS.
+
+*   **Background Threading (Client)**:
+    ```python
+    # tetris/network/network_client.py
+    self.thread = threading.Thread(target=self._run, name="tetris-websocket", daemon=True)
+    self.thread.start()
+    ```
+*   **Tick-Rate Update Sending (Client)**:
+    ```python
+    # tetris/game.py
+    if self.network_mode:
+        self.network_snapshot_timer += dt
+        if self.network_snapshot_timer >= 0.05: # 20 Hz
+            self.network_snapshot_timer = 0
+            self.send_local_snapshot()
+    ```
+
+---
+
+#### B. Game State Synchronization
+Sinkronisasi seed permainan acak yang adil dikirimkan oleh server saat inisialisasi game agar urutan tetromino (7-bag randomizer) kedua pemain sinkron dan identik. Update board dan skor pemain dikirimkan dan di-render berdampingan secara real-time.
+
+*   **Synchronized Seed Initialization (Client)**:
+    ```python
+    # tetris/game.py
+    self.shared_sequence = PieceSequence(seed)
+    self.p1 = PlayerUI("You", BOARD_1_X, BOARD_Y, self.p1_keys)
+    self.p2 = PlayerUI("Opponent", BOARD_2_X, BOARD_Y, {})
+    self.p1.state.init_pieces(self.shared_sequence, index_offset=0)
+    self.p2.state.init_pieces(self.shared_sequence, index_offset=0)
+    ```
+*   **Binary Snapshot Packing (Client)**:
+    ```python
+    # tetris/network/protocol.py
+    metadata = SNAPSHOT_META_STRUCT.pack(
+        slot, PIECE_TO_CODE[current.type], current.x, current.y, current.rotation,
+        *next_codes, held_code, int(player.can_hold), max(0, player.score), ...
+    )
+    return metadata + pack_board(player.board.grid)
+    ```
+
+---
+
+#### C. Reconnect Handling (Session Recovery)
+Jika salah satu pemain terputus dari jaringan, server menangguhkan pertandingan secara otomatis (*pause*) dan memberikan batas toleransi (*grace period*) selama 15 detik bagi client untuk melakukan rekoneksi menggunakan token sesi 16-byte unik tanpa merusak state pertandingan saat ini.
+
+*   **Grace Period Timer Registration (Server)**:
+    ```python
+    # tetris/network/server.py
+    timer = threading.Timer(
+        RECONNECT_GRACE_SECONDS,
+        self.expire_disconnected_session,
+        args=(session.slot, session.token, generation),
+    )
+    timer.daemon = True
+    timer.start()
+    ```
+*   **Session Resumption Handler (Server)**:
+    ```python
+    # tetris/network/server.py
+    session = self._resume_session(reconnect_token, connection)
+    if session is None:
+        session = self._claim_disconnected_session(reconnect_token, connection)
+    ```
+
+---
+
+#### D. Ping/Latency Indicator
+Mengukur nilai latensi bolak-balik (RTT) menggunakan frame ping-pong bawaan WebSocket. Latensi dihitung dalam milidetik dan langsung di-render pada UI utama permainan.
+
+*   **Client RTT Monitoring**:
+    ```python
+    # tetris/network/network_client.py
+    now = time.monotonic()
+    if now >= next_latency_update:
+        latency = connection.latency
+        if latency > 0:
+            self.incoming.put(("latency", latency * 1000.0)) # Convert to ms
+        next_latency_update = now + 0.5
+    ```
+
+---
+
+#### E. Logging Aktivitas Player
+Server mencatat setiap kejadian dan aktivitas kritis yang dilakukan pemain ke dalam *standard output* (stdout) konsol server demi kebutuhan audit log.
+
+*   **Console Event Logging (Server)**:
+    ```python
+    # tetris/network/server.py
+    print(f"[server] match started with seed {seed}", flush=True)
+    print(f"[server] player {session.slot} reconnected", flush=True)
+    print(f"[server] player {session.slot} topped out; player {winner} wins", flush=True)
+    print(f"[server] player {session.slot} forfeited; player {winner} wins", flush=True)
+    ```
+
+---
+
+#### F. Anti-Invalid Packet Sederhana
+Server dan client memvalidasi struktur header data biner yang masuk dan secara ketat menolak paket yang rusak. Di sisi lain, server melakukan proteksi anti-cheat dengan memastikan nilai game-state seperti skor dan baris terhapus bersifat monoton naik (tidak boleh berkurang).
+
+*   **Binary Header Validation (Protocol)**:
+    ```python
+    # tetris/network/protocol.py
+    if magic != MAGIC:
+        raise ProtocolError("invalid packet magic")
+    if version != PROTOCOL_VERSION:
+        raise ProtocolError(f"unsupported protocol version: {version}")
+    if len(data) != HEADER_SIZE + size:
+        raise ProtocolError("packet length doesn't match payload size")
+    ```
+*   **Monotonic State Verification (Anti-Cheat Server)**:
+    ```python
+    # tetris/network/server.py
+    if snapshot["score"] < previous["score"]:
+        raise ProtocolError("score cannot decrease during a match")
+    if snapshot["lines_cleared"] < previous["lines_cleared"]:
+        raise ProtocolError("line count cannot decrease during a match")
+    ```
+
 ### 1. Arsitektur Jaringan (Client-Server)
 Game ini menggunakan model arsitektur **Client-Server** yang beroperasi secara asinkronus menggunakan koneksi WebSocket:
 * **Server (`network/server.py`)**:
