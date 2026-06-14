@@ -1,4 +1,4 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/90Mprfp5)
+<img width="741" height="547" alt="image" src="https://github.com/user-attachments/assets/5d535b53-9195-48b9-bbce-5cd8c2138173" />[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/90Mprfp5)
 # Network Programming - Final Project [G04]
 
 ## Anggota Kelompok
@@ -89,4 +89,18 @@ Game ini mendukung keyboard kontrol dengan konfigurasi sebagai berikut:
      - **Pemain 2 (Join)**: Masukkan IP Address dan Port Pemain 1 pada kolom input sebelah kiri, lalu klik **Join**.
 
 ## Screenshot Hasil
-<!-- Tambahkan screenshot tangkapan layar permainan di sini -->
+
+<img width="1293" height="469" alt="image" src="https://github.com/user-attachments/assets/bc5a48c0-5272-4493-9364-3a6bc06cf8f7" />
+
+<br>
+
+<img width="1429" height="642" alt="image" src="https://github.com/user-attachments/assets/f6d0a406-f803-467d-ab5f-a725228dd6b4" />
+
+<br>
+
+<img width="741" height="547" alt="image" src="https://github.com/user-attachments/assets/7c1677af-d754-43c4-9331-92bc7229b7da" />
+
+<br>
+
+<img width="1008" height="525" alt="image" src="https://github.com/user-attachments/assets/030aaeb2-f7e2-4a3e-85c0-d007ce7e5cf8" />
+
