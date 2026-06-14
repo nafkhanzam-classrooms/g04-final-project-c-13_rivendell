@@ -4,8 +4,8 @@
 ## Anggota Kelompok
 | Nama                 | NRP          | Kelas     |
 | -------------------- | ------------ | ----------|
-| Farrel Jatmiko Aji   | 5025241234   | C         |
-| Justin Valentino     | 5025241193   | C         |
+| Justin Valentino   | 5025241234   | C         |
+| Farrel Jatmiko Aji     | 5025241193   | C         |
 | Aminudin Wijaya      | 5025241242   | C         |
 
 ## Link Youtube (Unlisted)
